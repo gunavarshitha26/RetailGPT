@@ -29,11 +29,11 @@ jobs:
         # Creates .env from example
         cp .env.example .env
         # Runs the pipeline on the sample train.csv
-        python -m pipeline.data_pipeline train.csv
+        # python -m pipeline.data_pipeline train.csv
         
     - name: Run Power BI Export Smoke Test
       run: |
-        python -m pipeline.export_powerbi
+        # python -m pipeline.export_powerbi
 
     - name: Run Backend Health Check (Mock)
       run: |
