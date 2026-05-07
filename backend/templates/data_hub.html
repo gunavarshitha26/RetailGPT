@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <h2>RetailGPT</h2>
+                <span class="brand-pulse"></span>
+            </div>
+            <p>Enterprise Edition</p>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard"><span>&#128202;</span> Home</a>
+            <a href="/data-hub" class="active"><span>&#128194;</span> Data Hub</a>
+            <a href="/forecast"><span>&#128200;</span> Forecast</a>
+            <a href="/anomalies"><span>&#128269;</span> Anomalies</a>
+            <a href="/basket"><span>&#128722;</span> Basket</a>
+            <a href="/settings"><span>&#9881;&#65039;</span> Settings</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <h1>Data &amp; Knowledge Hub</h1>
+            <div class="topbar-right">
+                <span class="topbar-time" id="topbar-clock"></span>
+                <div class="notif-bell">&#128276;<span class="notif-badge">3</span></div>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <div class="upload-zone-container">
+                <h3>Upload New Data or Knowledge</h3>
+                <form id="upload-form" enctype="multipart/form-data">
+                    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+                        <p class="upload-icon">&#128193;</p>
+                        <p>Drag and drop your file here or <strong>click to browse</strong></p>
+                        <p class="upload-hint">Accepts .csv, .pdf, .png, .jpg</p>
+                        <input type="file" id="file-input" name="file" accept=".csv,.pdf,image/*" hidden>
+                    </div>
+                    <div id="file-name-display" class="file-name-display"></div>
+                    <div class="form-actions">
+                        <button type="submit" id="upload-submit-btn" class="btn-primary" disabled>Upload File</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="data-table-container">
+                <h3>Uploaded Files</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>Type</th>
+                            <th>Date Uploaded</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="files-tbody">
+                        <tr>
+                            <td colspan="5" class="table-empty">Loading files...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+<script src="/static/js/data_hub.js"></script>
+{% endblock %}

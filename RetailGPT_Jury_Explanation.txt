@@ -1,0 +1,217 @@
+RetailGPT Project Explanation for Jury
+=====================================
+
+Project idea
+------------
+RetailGPT is a retail analytics web application. It helps a store owner or business team upload sales data and understand sales performance, future sales, unusual sales changes, and products that are often bought together.
+
+The project uses:
+- FastAPI for the backend.
+- HTML, CSS, and JavaScript templates for the frontend.
+- Pandas and machine learning libraries for analytics.
+- A Data Hub where the user uploads the retail CSV file.
+
+
+Simple navigation
+-----------------
+The sidebar has these main pages:
+
+1. Home
+   This is the main dashboard. It shows important sales KPIs and charts after data is uploaded.
+
+2. Data Hub
+   This is where the user uploads the CSV file. The project depends on this uploaded dataset.
+
+3. Forecast
+   This predicts future Sales using the uploaded data.
+
+4. Anomalies
+   This finds unusual Sales days, such as sudden spikes or drops.
+
+5. Basket
+   This finds product combinations that customers buy together.
+
+6. Settings
+   This shows the user profile and logout option.
+
+Inventory Planner was removed because it was harder to explain clearly and needed assumptions about stock levels that are not directly available in the Superstore dataset.
+
+
+Important no-data rule
+----------------------
+The analytics pages first check whether a CSV dataset has been uploaded in the Data Hub.
+
+If no dataset is uploaded:
+- Forecast does not show charts.
+- Anomalies does not show anomaly records.
+- Basket does not show product rules.
+
+Instead, the page shows a simple message asking the user to upload data in the Data Hub.
+
+This is important because the app should not show fake results when no data exists.
+
+
+Data flow
+---------
+1. The user logs into RetailGPT.
+2. The user goes to Data Hub.
+3. The user uploads a CSV file.
+4. The backend saves the file in the data_store/uploads folder.
+5. The backend processes the CSV and creates analytics-ready files.
+6. The dashboard and analytics pages call FastAPI endpoints to get results.
+7. The frontend displays cards, charts, tables, and recommendations.
+
+
+Home dashboard
+--------------
+The Home page gives a quick business summary.
+
+It shows:
+- Total Sales.
+- Active Anomalies.
+- Forecasted Growth.
+- Sales forecast chart.
+- Anomaly chart.
+- Category sales trend.
+- Segment and region performance.
+
+How to explain:
+"The Home page is the executive view. After uploading data, the user can quickly understand total sales, future growth, unusual sales behavior, and category or regional performance."
+
+
+Data Hub
+--------
+The Data Hub is the starting point of the project.
+
+It allows the user to upload:
+- CSV files for analytics.
+- PDF files for knowledge use.
+- Images if needed later.
+
+How to explain:
+"The Data Hub is where raw business data enters the system. Once a CSV is uploaded, all other analytics pages become active."
+
+
+Forecast page
+-------------
+The Forecast page predicts future Sales.
+
+Only Sales is kept as the metric to make the project simple and easy to explain.
+
+The user can filter by:
+- Forecast horizon.
+- Category.
+- Region.
+
+It shows:
+- Total historical Sales.
+- Average daily Sales.
+- Forecasted Sales for the selected period.
+- Growth percentage.
+- Sales trend chart.
+- Weekly and monthly seasonality charts.
+
+How to explain:
+"The Forecast page uses past sales patterns to estimate upcoming sales. This helps retailers plan promotions, staffing, and purchasing decisions."
+
+
+Anomalies page
+--------------
+The Anomalies page finds unusual Sales behavior.
+
+Only Sales is kept as the metric.
+
+It can detect:
+- Sudden sales spikes.
+- Sudden sales drops.
+- Days where sales are far from the expected range.
+
+The user can filter by:
+- Date range.
+- Severity.
+- Category.
+- Region.
+
+It shows:
+- Total anomaly count.
+- High severity count.
+- Medium severity count.
+- Date range analyzed.
+- Timeline chart.
+- Anomaly records table.
+
+How to explain:
+"The Anomalies page helps the business notice unusual sales days. A spike may mean a successful promotion. A drop may mean stock issues, low demand, or operational problems."
+
+
+Basket page
+-----------
+The Basket page finds products that are bought together.
+
+It uses market basket analysis.
+
+Important terms:
+- Support: how often a product pair appears in all orders.
+- Confidence: how often product B is bought when product A is bought.
+- Lift: how strong the relationship is compared with random chance.
+
+It shows:
+- Total unique orders analyzed.
+- Number of association rules found.
+- Strongest rule by lift.
+- Average basket size.
+- Top product pairs table.
+- Product search recommendations.
+- A small network graph of product relationships.
+
+How to explain:
+"The Basket page helps the retailer understand cross-selling. For example, if customers who buy Product A often buy Product B, the store can place them together or recommend them together."
+
+
+Backend endpoints
+-----------------
+Important API endpoints:
+
+/api/data/upload
+Uploads a file from Data Hub.
+
+/api/forecast
+Returns Sales forecast data.
+
+/api/anomalies
+Returns unusual Sales records.
+
+/api/basket
+Returns product association rules.
+
+/api/data/charts/kpis
+Returns dashboard KPI values.
+
+
+Why Sales only?
+---------------
+Sales is the easiest and clearest metric for the jury to understand.
+
+Profit, Quantity, and Discount were removed from the metric dropdowns because:
+- They make the demo more complex.
+- Some uploaded files may not contain all those columns.
+- Sales is available in the Superstore dataset.
+- Sales directly connects to business performance.
+
+
+Demo script
+-----------
+1. Start the FastAPI server.
+2. Open the browser.
+3. Login to RetailGPT.
+4. Go to Data Hub.
+5. Upload the Superstore CSV.
+6. Open Home and show the dashboard.
+7. Open Forecast and explain future Sales prediction.
+8. Open Anomalies and explain unusual Sales detection.
+9. Open Basket and explain product cross-selling.
+
+
+One-line project summary
+------------------------
+RetailGPT converts uploaded retail sales data into useful business insights such as sales forecasts, anomaly detection, and product basket recommendations.

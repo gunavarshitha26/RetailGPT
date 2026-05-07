@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="RetailGPT Enterprise - AI-powered retail analytics platform with sales forecasting, anomaly detection, and market basket analysis.">
+    <title>RetailGPT - Enterprise Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="loading">
+    <div id="page-loader" class="loading-overlay">
+        <div class="spinner-ring"></div>
+        <p class="loader-label">RetailGPT Enterprise</p>
+    </div>
+
+    {% block content %}{% endblock %}
+    <div id="toast-container" class="toast-container"></div>
+
+    {% if user and not hide_chat %}
+    <div id="chatbot-widget" class="chatbot-widget">
+        <div class="chatbot-header" id="chatbot-header">
+            <h4>
+                <span class="copilot-live-dot"></span>
+                RetailGPT Copilot
+            </h4>
+            <button id="chatbot-toggle-btn" class="chatbot-toggle-btn" aria-label="Toggle chatbot">&#9660;</button>
+        </div>
+        <div class="chatbot-body" id="chatbot-body">
+            <div id="chat-messages" class="chat-messages">
+                <div class="message assistant">Hello. I can help with sales, forecasts, anomalies, products, regions, and segments.</div>
+            </div>
+            <div class="quick-questions">
+                <button onclick="sendQuick('What is the total sales revenue?')">Total Sales?</button>
+                <button onclick="sendQuick('Which region performs best?')">Best Region?</button>
+                <button onclick="sendQuick('What products are bought together?')">Cross-sells?</button>
+                <button onclick="sendQuick('When is peak sales season?')">Peak Season?</button>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Ask about forecasts, anomalies...">
+                <button id="chat-send-btn" class="chat-send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <script src="/static/js/chat.js"></script>
+    {% block scripts %}{% endblock %}
+
+    <script>
+      window.addEventListener('load', () => {
+        const loader = document.getElementById('page-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          setTimeout(() => loader.style.display = 'none', 500);
+        }
+      });
+
+      function updateClock() {
+        const el = document.getElementById('topbar-clock');
+        if (!el) return;
+        el.textContent = new Date().toLocaleString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+      updateClock();
+      setInterval(updateClock, 30000);
+
+      const logoutBtn = document.getElementById('logout-btn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+          await fetch('/api/auth/logout', { method: 'POST' });
+          window.location.href = '/';
+        });
+      }
+    </script>
+</body>
+</html>

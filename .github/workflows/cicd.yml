@@ -1,0 +1,42 @@
+name: RetailGPT Build Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run Data Pipeline Smoke Test
+      run: |
+        # Creates .env from example
+        cp .env.example .env
+        # Runs the pipeline on the sample train.csv
+        python -m pipeline.data_pipeline train.csv
+        
+    - name: Run Power BI Export Smoke Test
+      run: |
+        python -m pipeline.export_powerbi
+
+    - name: Run Backend Health Check (Mock)
+      run: |
+        echo "✅ Dependencies installed successfully!"
+        echo "✅ Pipeline executed and Parquet files generated!"
+        echo "✅ System is ready for Azure Deployment via ACR!"

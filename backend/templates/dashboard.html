@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <h2>RetailGPT</h2>
+                <span class="brand-pulse"></span>
+            </div>
+            <p>Enterprise Edition</p>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard" class="active"><span>&#128202;</span> Home</a>
+            <a href="/data-hub"><span>&#128194;</span> Data Hub</a>
+            <a href="/forecast"><span>&#128200;</span> Forecast</a>
+            <a href="/anomalies"><span>&#128269;</span> Anomalies</a>
+            <a href="/basket"><span>&#128722;</span> Basket</a>
+            <a href="/settings"><span>&#9881;&#65039;</span> Settings</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <h1>Executive Dashboard</h1>
+            <div class="topbar-right">
+                <span class="topbar-time" id="topbar-clock"></span>
+                <div class="notif-bell">&#128276;<span class="notif-badge">3</span></div>
+            </div>
+        </header>
+
+        <div class="dashboard-content" id="dashboard-content">
+            {% if has_data %}
+            <div class="kpi-grid">
+                <div class="kpi-card sales">
+                    <h3>Total Sales</h3>
+                    <p class="kpi-value" id="kpi-total-sales">--</p>
+                    <span class="kpi-trend positive">Curated Dataset</span>
+                </div>
+                <div class="kpi-card anomaly">
+                    <h3>Active Anomalies</h3>
+                    <p class="kpi-value" id="kpi-anomalies">--</p>
+                    <span class="kpi-trend warning">Attention Required</span>
+                </div>
+                <div class="kpi-card growth">
+                    <h3>Forecasted Growth</h3>
+                    <p class="kpi-value" id="kpi-growth">--</p>
+                    <span class="kpi-trend positive">Next 30 Days</span>
+                </div>
+            </div>
+
+            <div id="charts-container">
+                <div class="chart-card chart-full" data-chart="forecast">
+                    <p class="chart-title">LightGBM 30-Day Forward Forecast</p>
+                    <div class="chart-frame"><canvas id="chartForecast"></canvas></div>
+                </div>
+
+                <div class="chart-card chart-full" data-chart="anomalies">
+                    <p class="chart-title">Anomaly Detection - Isolation Forest + IQR</p>
+                    <div class="chart-frame"><canvas id="chartAnomalies"></canvas></div>
+                    <div id="anomaly-legend-footer" class="chart-footer-legend"></div>
+                </div>
+
+                <div class="chart-card chart-full" data-chart="category-trend">
+                    <p class="chart-title">Category Sales Over Time</p>
+                    <div class="chart-frame chart-frame-sm"><canvas id="chartCategoryTrend"></canvas></div>
+                </div>
+
+                <div class="chart-card chart-full" data-chart="segment-region">
+                    <p class="chart-title">Segment x Region Performance</p>
+                    <div class="chart-frame"><canvas id="chartSegmentRegion"></canvas></div>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state-container">
+                <div class="empty-state-icon">&#128194;</div>
+                <h2 class="empty-state-title">No Dataset Loaded</h2>
+                <p class="empty-state-desc">
+                    Upload your retail transaction CSV in the Data Hub to unlock
+                    AI-powered forecasts, anomaly detection, and executive insights.
+                </p>
+                <a href="/data-hub" class="btn-primary empty-state-btn">Go to Data Hub &rarr;</a>
+                <div class="empty-state-features">
+                    <div class="feature-pill">&#128200; Sales Forecasting</div>
+                    <div class="feature-pill">&#128269; Anomaly Detection</div>
+                    <div class="feature-pill">&#128722; Market Basket</div>
+                    <div class="feature-pill">&#127757; Regional Analysis</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+<script>
+const money = (value, digits = 0) => '$' + Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: digits });
+const noData = (selector) => {
+  const card = document.querySelector(selector);
+  if (card) card.innerHTML = '<p class="chart-empty">No data available</p>';
+};
+
+fetch('/api/data/charts/kpis')
+  .then(r => r.json())
+  .then(KPI => {
+    if (!KPI.has_data) {
+      const grid = document.querySelector('.kpi-grid');
+      if (grid) grid.style.display = 'none';
+      return;
+    }
+    document.getElementById('kpi-total-sales').textContent = money(KPI.total_sales);
+    document.getElementById('kpi-anomalies').textContent = KPI.active_anomalies;
+    document.getElementById('kpi-growth').textContent = (KPI.forecasted_growth >= 0 ? '+' : '') + KPI.forecasted_growth + '%';
+  });
+
+const commonPlugins = {
+  legend: { display: true, position: 'top', labels: { color: '#94A3B8', boxWidth: 12, font: { size: 11 } } },
+  tooltip: {
+    backgroundColor: 'rgba(10, 15, 30, 0.94)',
+    titleColor: '#F1F5F9',
+    bodyColor: '#CBD5E1',
+    padding: 12,
+    cornerRadius: 10
+  }
+};
+
+const todayLinePlugin = {
+  id: 'todayLine',
+  afterDatasetsDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea || !scales.x) return;
+    const index = chart.options.plugins.todayLine?.index;
+    if (index == null) return;
+    const x = scales.x.getPixelForValue(index);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,158,11,0.8)';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, chartArea.top);
+    ctx.lineTo(x, chartArea.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#F59E0B';
+    ctx.font = '700 10px Inter, sans-serif';
+    ctx.fillText('TODAY', x + 6, chartArea.top + 12);
+    ctx.restore();
+  }
+};
+
+fetch('/api/data/charts/anomalies')
+  .then(r => r.json())
+  .then(DATA => {
+    const canvas = document.getElementById('chartForecast');
+    if (!canvas) return;
+    if (!DATA?.forecast?.length || !DATA?.points?.length) {
+      noData('[data-chart="forecast"]');
+      return;
+    }
+
+    const pts = DATA.points.slice(-90);
+    const forecastData = DATA.forecast.slice(-90);
+
+    new Chart(canvas, {
+      type: 'line',
+      plugins: [todayLinePlugin],
+      data: {
+        labels: pts.map(p => p.label),
+        datasets: [{
+          label: 'Sales Forecast',
+          data: forecastData,
+          borderColor: '#3B82F6',
+          backgroundColor: (ctx) => {
+            const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(59,130,246,0.2)');
+            gradient.addColorStop(1, 'rgba(59,130,246,0)');
+            return gradient;
+          },
+          fill: true,
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.4
+        }, {
+          label: 'Actual Sales',
+          data: pts.map(p => p.y),
+          borderColor: 'rgba(255,255,255,0.3)',
+          borderWidth: 1,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          ...commonPlugins,
+          todayLine: { index: pts.length - 1 },
+          tooltip: { ...commonPlugins.tooltip, callbacks: { label: ctx => `${ctx.dataset.label}: ${money(ctx.raw)}` } }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748B', maxTicksLimit: 10 } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748B', callback: v => '$' + (v / 1000).toFixed(1) + 'k' } }
+        }
+      }
+    });
+  });
+
+fetch('/api/data/charts/anomalies')
+  .then(r => r.json())
+  .then(DATA => {
+    const canvas = document.getElementById('chartAnomalies');
+    if (!canvas) return;
+    if (!DATA?.points?.length) {
+      noData('[data-chart="anomalies"]');
+      return;
+    }
+
+    const pts = DATA.points;
+    const spikes = pts.filter(p => p.type?.includes('Positive'));
+    const drops = pts.filter(p => p.type?.includes('Negative'));
+    const footer = document.getElementById('anomaly-legend-footer');
+    if (footer) {
+      footer.innerHTML = `
+        <span>Spike count: <strong class="gold">${spikes.length}</strong></span>
+        <span>Drop count: <strong class="danger">${drops.length}</strong></span>
+        <span>Normal: <strong class="success">${pts.length - spikes.length - drops.length}</strong></span>
+      `;
+    }
+
+    new Chart(canvas, {
+      data: {
+        labels: pts.map(p => p.label),
+        datasets: [
+          { type: 'line', label: 'Actual Sales', data: pts.map(p => p.y), borderColor: 'rgba(148,163,184,0.5)', borderWidth: 1.5, pointRadius: 0, fill: false, order: 3 },
+          { type: 'line', label: 'Forecast', data: DATA.forecast, borderColor: 'rgba(59,130,246,0.7)', borderDash: [6, 3], borderWidth: 1.5, pointRadius: 0, fill: false, order: 2 },
+          { type: 'scatter', label: 'Sales Spike', data: pts.map(p => p.type?.includes('Positive') ? p.y : null), pointBackgroundColor: '#F59E0B', pointBorderColor: 'rgba(245,158,11,0.3)', pointBorderWidth: 2, pointRadius: 8, pointStyle: 'triangle', order: 1 },
+          { type: 'scatter', label: 'Sales Drop', data: pts.map(p => p.type?.includes('Negative') ? p.y : null), pointBackgroundColor: '#EF4444', pointBorderColor: 'rgba(239,68,68,0.3)', pointBorderWidth: 2, pointRadius: 8, pointStyle: 'triangle', rotation: 180, order: 1 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          ...commonPlugins,
+          tooltip: {
+            ...commonPlugins.tooltip,
+            callbacks: {
+              label: (ctx) => {
+                const p = pts[ctx.dataIndex];
+                if (ctx.dataset.type === 'scatter') {
+                  return [`${p.label}: ${money(p.y)}`, `Type: ${p.type}`, 'Advice: review promotions, stockouts, and regional mix.'];
+                }
+                return `${ctx.dataset.label}: ${money(ctx.raw)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748B', maxTicksLimit: 10 } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748B', callback: v => '$' + (v / 1000).toFixed(1) + 'k' } }
+        }
+      }
+    });
+  });
+
+fetch('/api/data/charts/category-trend')
+  .then(r => r.json())
+  .then(DATA => {
+    const canvas = document.getElementById('chartCategoryTrend');
+    if (!canvas) return;
+    if (!DATA?.labels?.length || !DATA?.categories?.length) {
+      noData('[data-chart="category-trend"]');
+      return;
+    }
+
+    const colors = { technology: '#3B82F6', furniture: '#F59E0B', office_supplies: '#10B981' };
+    const datasets = DATA.categories.map(cat => {
+      const key = cat.toLowerCase().replace(/ /g, '_');
+      const vals = DATA.datasets[key] || [];
+      const maxVal = Math.max(...vals);
+      const color = colors[key] || '#94A3B8';
+      return {
+        label: cat,
+        data: vals,
+        borderColor: color,
+        borderWidth: 2,
+        pointRadius: vals.map(v => v === maxVal ? 5 : 3),
+        pointBackgroundColor: vals.map(v => v === maxVal ? color : '#0A0F1E'),
+        pointBorderColor: color,
+        pointHoverRadius: 6,
+        tension: 0.4,
+        fill: false
+      };
+    });
+
+    new Chart(canvas, {
+      type: 'line',
+      data: { labels: DATA.labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { ...commonPlugins, tooltip: { ...commonPlugins.tooltip, callbacks: { label: ctx => `${ctx.dataset.label}: ${money(ctx.raw)}` } } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748B', maxTicksLimit: 12 } },
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748B', callback: v => '$' + (v / 1000).toFixed(0) + 'k' } }
+        }
+      }
+    });
+  });
+
+fetch('/api/data/charts/segment-region')
+  .then(r => r.json())
+  .then(DATA => {
+    const canvas = document.getElementById('chartSegmentRegion');
+    if (!canvas) return;
+    if (!DATA?.regions?.length || !DATA?.segments?.length) {
+      noData('[data-chart="segment-region"]');
+      return;
+    }
+
+    const colors = { consumer: '#3B82F6', corporate: '#7C3AED', home_office: '#10B981' };
+    const totals = DATA.regions.map((_, ri) => DATA.segments.reduce((sum, seg) => {
+      const key = seg.toLowerCase().replace(/ /g, '_');
+      return sum + (DATA.datasets[key]?.[ri] || 0);
+    }, 0));
+    const sortedIndices = totals.map((total, index) => ({ total, index })).sort((a, b) => b.total - a.total).map(item => item.index);
+    const sortedRegions = sortedIndices.map(i => DATA.regions[i]);
+
+    new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: sortedRegions,
+        datasets: DATA.segments.map(seg => {
+          const key = seg.toLowerCase().replace(/ /g, '_');
+          const color = colors[key] || '#94A3B8';
+          return {
+            label: seg,
+            data: sortedIndices.map(idx => DATA.datasets[key]?.[idx] || 0),
+            backgroundColor: (ctx) => {
+              const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 320, 0);
+              gradient.addColorStop(0, color + '99');
+              gradient.addColorStop(1, color);
+              return gradient;
+            },
+            borderRadius: 6,
+            borderSkipped: false
+          };
+        })
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { ...commonPlugins, tooltip: { ...commonPlugins.tooltip, callbacks: { label: ctx => `${ctx.dataset.label}: ${money(ctx.raw * 1000, 0)}` } } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748B', callback: v => '$' + v + 'k' } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748B' } }
+        }
+      }
+    });
+  });
+</script>
+{% endblock %}

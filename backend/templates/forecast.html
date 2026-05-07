@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <h2>RetailGPT</h2>
+                <span class="brand-pulse"></span>
+            </div>
+            <p>Enterprise Edition</p>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard"><span>&#128202;</span> Home</a>
+            <a href="/data-hub"><span>&#128194;</span> Data Hub</a>
+            <a href="/forecast" class="active"><span>&#128200;</span> Forecast</a>
+            <a href="/anomalies"><span>&#128269;</span> Anomalies</a>
+            <a href="/basket"><span>&#128722;</span> Basket</a>
+            <a href="/settings"><span>&#9881;&#65039;</span> Settings</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <h1>Forecast Studio</h1>
+            <div class="topbar-right">
+                <span class="topbar-time" id="topbar-clock"></span>
+                <div class="notif-bell">&#128276;<span class="notif-badge">3</span></div>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            {% if not has_data %}
+            <div class="empty-state-container">
+                <div class="empty-state-icon">&#128200;</div>
+                <h2 class="empty-state-title">No dataset uploaded. Please upload your data in Data Hub to use Forecast Studio.</h2>
+                <a href="/data-hub" class="btn-primary empty-state-btn">Go to Data Hub &rarr;</a>
+            </div>
+            {% else %}
+            <div class="forecast-workspace">
+                <section class="forecast-controls">
+                    <p class="settings-eyebrow">Controls</p>
+                    <label>Metric</label>
+                    <select id="forecast-metric">
+                        <option>Sales</option>
+                    </select>
+
+                    <label>Forecast Horizon</label>
+                    <select id="forecast-horizon">
+                        <option value="7">7 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="90">90 days</option>
+                    </select>
+
+                    <label>Category</label>
+                    <select id="forecast-category">
+                        <option>All</option>
+                        <option>Furniture</option>
+                        <option>Office Supplies</option>
+                        <option>Technology</option>
+                    </select>
+
+                    <label>Region</label>
+                    <select id="forecast-region">
+                        <option>All</option>
+                        <option>East</option>
+                        <option>West</option>
+                        <option>Central</option>
+                        <option>South</option>
+                    </select>
+
+                    <button id="forecast-export" class="btn-primary">Download Forecast CSV</button>
+                </section>
+
+                <section class="forecast-main">
+                    <div class="kpi-grid forecast-kpis">
+                        <div class="kpi-card sales">
+                            <h3>Total Historical</h3>
+                            <p class="kpi-value" id="forecast-total">--</p>
+                            <span class="kpi-trend positive">Loaded Dataset</span>
+                        </div>
+                        <div class="kpi-card growth">
+                            <h3>Average Daily</h3>
+                            <p class="kpi-value" id="forecast-average">--</p>
+                            <span class="kpi-trend positive">Daily Baseline</span>
+                        </div>
+                        <div class="kpi-card sales">
+                            <h3>Forecasted Horizon</h3>
+                            <p class="kpi-value" id="forecast-sum">--</p>
+                            <span class="kpi-trend positive">Selected Horizon</span>
+                        </div>
+                        <div class="kpi-card anomaly">
+                            <h3>Growth Trend</h3>
+                            <p class="kpi-value" id="forecast-growth">--</p>
+                            <span class="kpi-trend warning">Vs Previous Period</span>
+                        </div>
+                    </div>
+
+                    <div id="forecast-status" class="forecast-status"></div>
+
+                    <div class="chart-card chart-full">
+                        <p class="chart-title">Historical and Forecasted Trend</p>
+                        <div class="chart-frame"><canvas id="forecastChart"></canvas></div>
+                    </div>
+
+                    <div class="forecast-insights-grid">
+                        <div class="chart-card">
+                            <p class="chart-title">Weekly Seasonality</p>
+                            <div class="chart-frame chart-frame-sm"><canvas id="weeklyChart"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <p class="chart-title">Monthly Trend</p>
+                            <div class="chart-frame chart-frame-sm"><canvas id="monthlyChart"></canvas></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+{% if has_data %}
+<script src="/static/js/forecast.js"></script>
+{% endif %}
+{% endblock %}

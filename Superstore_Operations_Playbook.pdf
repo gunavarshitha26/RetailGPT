@@ -1,0 +1,53 @@
+SUPERSTORE RETAIL OPERATIONS & SUPPLY CHAIN PLAYBOOK
+Document ID: SOP-2026-SUPERSTORE
+Department: Strategy, Data Analytics & Operations
+Effective Date: January 2026
+
+1. Overview & Dataset Context
+This document outlines standard operating procedures for handling demand volatility, inventory optimization, and market basket merchandising across our three primary verticals: Furniture, Office Supplies, and Technology. All sales strategies must align with historical metrics tracking Order Date, Ship Mode, Customer Segment, and Category sales performance.
+
+2. Protocol: Handling Positive Anomalies (Sales Spikes)
+A positive anomaly indicates an unexpected surge in Sales volume beyond the LightGBM forecasted baseline. While beneficial, it introduces severe stockout risks, particularly for high-value Technology and Furniture items.
+
+Technology (Phones & Machines): Spikes in this sub-category are often driven by corporate (Corporate Segment) hardware upgrades or back-to-school rushes.
+
+Action: Expedite open purchase orders immediately. Limit bulk purchases by single Customer IDs to prevent inventory hoarding by resellers.
+
+Office Supplies (Binders, Paper, Storage): Spikes here are usually seasonal (e.g., end-of-financial-year reporting).
+
+Action: Since these items have low lead times and are easy to manufacture, engage secondary local suppliers immediately to fulfill Standard Class shipments without upgrading to First Class.
+
+Furniture (Tables, Chairs, Bookcases): Spikes in furniture can cause massive logistical bottlenecks due to size.
+
+Action: Pause paid advertising on trending Product Names. Ensure warehouse staging areas are cleared to handle incoming freight.
+
+3. Protocol: Handling Negative Anomalies (Sales Drops)
+A negative anomaly indicates an unexpected drop in demand, leading to excess inventory and tied-up working capital.
+
+Root Cause Analysis (RCA):
+
+Geographic Drops: Filter data by Region (East, West, South, Central) and State. Determine if the drop is localized due to weather events or regional economic shifts.
+
+Shipping Issues: Analyze Ship Mode distributions. If Same Day or First Class metrics drop, investigate carrier delays causing customer churn.
+
+Inventory Clearance Strategies:
+
+Bundling: Bundle slow-moving Office Supplies (e.g., Labels, Envelopes) with high-performing Technology products at a slight discount.
+
+Segment Targeting: If Consumer segment sales drop, shift marketing focus to B2B by offering bulk discounts to the Home Office and Corporate segments.
+
+4. Category-Specific Sales Improvement Strategies
+To continuously improve baseline sales and Average Order Value (AOV), implement the following category-specific logic:
+
+Furniture: Sales often suffer from high shipping costs and long delivery times. Strategy: Offer free Standard Class shipping thresholds (e.g., "Free shipping on Bookcases over $500"). Create digital showrooms pairing Chairs with Tables to encourage set purchases.
+
+Technology: These are high-margin, high-consideration purchases. Strategy: Cross-sell low-margin, high-volume accessories. Never sell a machine or phone without pitching an extended warranty or matching Accessories.
+
+Office Supplies: This category relies on repeat volume. Strategy: Implement subscription models for consumable Sub-Categories like Paper, Binders, and Art supplies targeted at the Corporate segment to guarantee recurring revenue.
+
+5. Market Basket Analysis (MBA) & Cross-Merchandising
+To increase sales, products must be strategically paired based on association rule mining (Support, Confidence, and Lift).
+
+The "Desk Setup" Basket: Pair Furniture (Desks/Tables) with Technology (Monitors/Accessories) and Office Supplies (Storage).
+
+Loss Leader Merchandising: If Fasteners or Labels are heavily discounted to drive traffic, ensure the checkout path forces exposure to high-margin goods like Appliances or Copiers.

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <h2>RetailGPT</h2>
+                <span class="brand-pulse"></span>
+            </div>
+            <p>Enterprise Edition</p>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard"><span>&#128202;</span> Home</a>
+            <a href="/data-hub"><span>&#128194;</span> Data Hub</a>
+            <a href="/forecast" class="{{ 'active' if page == 'forecast' else '' }}"><span>&#128200;</span> Forecast</a>
+            <a href="/anomalies" class="{{ 'active' if page == 'anomalies' else '' }}"><span>&#128269;</span> Anomalies</a>
+            <a href="/basket" class="{{ 'active' if page == 'basket' else '' }}"><span>&#128722;</span> Basket</a>
+            <a href="/settings" class="{{ 'active' if page == 'settings' else '' }}"><span>&#9881;&#65039;</span> Settings</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <h1>{{ page_title }}</h1>
+            <div class="topbar-right">
+                <span class="topbar-time" id="topbar-clock"></span>
+                <div class="notif-bell">&#128276;<span class="notif-badge">3</span></div>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            {% if page == 'settings' %}
+            <div class="settings-panel">
+                <div class="settings-profile-card">
+                    <div class="settings-avatar">{{ user.name[0].upper() if user.name else 'U' }}</div>
+                    <div class="settings-profile-main">
+                        <p class="settings-eyebrow">Profile</p>
+                        <h2>{{ user.name }}</h2>
+                        <p>{{ user.username }}</p>
+                        <span class="user-badge">Pro</span>
+                    </div>
+                </div>
+                <div class="settings-actions-card">
+                    <p class="settings-eyebrow">Account</p>
+                    <h3>Session Controls</h3>
+                    <p class="settings-copy">Manage your RetailGPT Enterprise profile and sign out from this workspace.</p>
+                    <button id="logout-btn" class="btn-logout settings-logout">Logout</button>
+                </div>
+            </div>
+            {% else %}
+            <div class="coming-soon-wrap">
+                <div class="coming-soon-icon">{{ page_icon | safe }}</div>
+                <h2 class="coming-soon-title">{{ page_title }}</h2>
+                <p class="coming-soon-copy">
+                    This module is under development and will be available in the next release.
+                    Use the Dashboard and Data Hub to access your analytics now.
+                </p>
+                <span class="coming-soon-badge">Coming Soon - v2.1</span>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+{% endblock %}

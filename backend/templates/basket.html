@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if not has_data %}
+<div class="anomaly-empty-page">
+    <div class="empty-state-container anomaly-empty-only">
+        <div class="empty-state-icon">&#128722;</div>
+        <h2 class="empty-state-title">No dataset uploaded. Please upload your data in Data Hub to use Basket Intelligence.</h2>
+        <a href="/data-hub" class="btn-primary empty-state-btn">Go to Data Hub &rarr;</a>
+    </div>
+</div>
+{% else %}
+<div class="dashboard-layout">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <h2>RetailGPT</h2>
+                <span class="brand-pulse"></span>
+            </div>
+            <p>Enterprise Edition</p>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="/dashboard"><span>&#128202;</span> Home</a>
+            <a href="/data-hub"><span>&#128194;</span> Data Hub</a>
+            <a href="/forecast"><span>&#128200;</span> Forecast</a>
+            <a href="/anomalies"><span>&#128269;</span> Anomalies</a>
+            <a href="/basket" class="active"><span>&#128722;</span> Basket</a>
+            <a href="/settings"><span>&#9881;&#65039;</span> Settings</a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar">
+            <h1>Basket Intelligence</h1>
+            <div class="topbar-right">
+                <span class="topbar-time" id="topbar-clock"></span>
+                <div class="notif-bell">&#128276;<span class="notif-badge">3</span></div>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <div class="analytics-workspace">
+                <section class="analytics-controls">
+                    <p class="settings-eyebrow">Filters</p>
+                    <label for="basket-support">Min Support <span id="basket-support-value">0.02</span></label>
+                    <input id="basket-support" type="range" min="0.01" max="0.1" step="0.01" value="0.02">
+
+                    <label for="basket-confidence">Min Confidence <span id="basket-confidence-value">0.30</span></label>
+                    <input id="basket-confidence" type="range" min="0.1" max="0.9" step="0.05" value="0.3">
+
+                    <label for="basket-category">Category</label>
+                    <select id="basket-category"><option>All</option></select>
+
+                    <label for="basket-max-rules">Max Rules</label>
+                    <select id="basket-max-rules">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                    </select>
+                </section>
+
+                <section class="analytics-main">
+                    <div class="kpi-grid analytics-kpis basket-kpis">
+                        <div class="kpi-card sales">
+                            <h3>Unique Orders</h3>
+                            <p class="kpi-value" id="basket-orders">--</p>
+                            <span class="kpi-trend positive">Analyzed</span>
+                        </div>
+                        <div class="kpi-card growth">
+                            <h3>Rules Found</h3>
+                            <p class="kpi-value" id="basket-rules-count">--</p>
+                            <span class="kpi-trend positive">Associations</span>
+                        </div>
+                        <div class="kpi-card anomaly">
+                            <h3>Avg Basket Size</h3>
+                            <p class="kpi-value" id="basket-size">--</p>
+                            <span class="kpi-trend warning">Items per Order</span>
+                        </div>
+                    </div>
+
+                    <div id="basket-status" class="forecast-status"></div>
+
+                    <div class="data-table-container">
+                        <div class="table-header-row">
+                            <h3>Top Product Pairs</h3>
+                            <div class="inline-controls">
+                                <label for="basket-sort">Sort by</label>
+                                <select id="basket-sort">
+                                    <option value="lift" selected>Lift</option>
+                                    <option value="confidence">Confidence</option>
+                                </select>
+                            </div>
+                        </div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Product A</th>
+                                    <th>Product B</th>
+                                    <th>Support %</th>
+                                    <th>Confidence %</th>
+                                    <th>Lift Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="basket-tbody">
+                                <tr><td colspan="5" class="table-empty">Loading rules...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="data-table-container">
+                        <div class="table-header-row">
+                            <h3>Product Search</h3>
+                            <input id="basket-search" class="analytics-search" type="search" placeholder="Type a product name">
+                        </div>
+                        <div id="basket-search-results" class="recommendation-list">
+                            <p class="table-empty">Search for a product to view cross-sell recommendations.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/app.js"></script>
+{% if has_data %}
+<script src="/static/js/basket.js"></script>
+{% endif %}
+{% endblock %}
