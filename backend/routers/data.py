@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
+from backend.dataset_access import has_user_dataset
 from backend.database import save_upload_metadata, get_user_history, add_user_file, get_user_files, delete_user_file_record
 from backend.routers.auth import get_current_user_from_cookie
 from backend.config import settings
@@ -88,7 +89,10 @@ async def delete_file(filename: str, request: Request):
 
 
 @router.get("/charts/category-trend")
-def category_trend():
+def category_trend(user=Depends(get_current_user_from_cookie)):
+    if not has_user_dataset(user["username"]):
+        return {"labels": [], "categories": [], "datasets": {}}
+
     path = os.path.join(settings.CURATED_DATA_DIR, "category_timeseries.parquet")
     if not os.path.exists(path):
         return {"labels": [], "categories": [], "datasets": {}}
@@ -117,7 +121,10 @@ def category_trend():
     }
 
 @router.get("/charts/segment-region")
-def segment_region():
+def segment_region(user=Depends(get_current_user_from_cookie)):
+    if not has_user_dataset(user["username"]):
+        return {"regions": [], "segments": [], "datasets": {}}
+
     path = os.path.join(settings.CURATED_DATA_DIR, "segment_region.parquet")
     if not os.path.exists(path):
         return {"regions": [], "segments": [], "datasets": {}}
@@ -146,7 +153,10 @@ def segment_region():
     }
 
 @router.get("/charts/anomalies")
-def anomalies():
+def anomalies(user=Depends(get_current_user_from_cookie)):
+    if not has_user_dataset(user["username"]):
+        return {"points": [], "forecast": []}
+
     path = os.path.join(settings.CURATED_DATA_DIR, "forecast_anomalies.parquet")
     if not os.path.exists(path):
         return {"points": [], "forecast": []}
@@ -170,7 +180,10 @@ def anomalies():
     }
 
 @router.get("/charts/basket-rules")
-def basket_rules():
+def basket_rules(user=Depends(get_current_user_from_cookie)):
+    if not has_user_dataset(user["username"]):
+        return {"labels": [], "lift": [], "support": [], "confidence": []}
+
     path = os.path.join(settings.CURATED_DATA_DIR, "market_basket_rules.parquet")
     if not os.path.exists(path):
         return {"labels": [], "lift": [], "support": [], "confidence": []}
@@ -186,7 +199,10 @@ def basket_rules():
     }
 
 @router.get("/charts/kpis")
-async def get_kpis():
+async def get_kpis(user=Depends(get_current_user_from_cookie)):
+    if not has_user_dataset(user["username"]):
+        return {"has_data": False}
+
     forecast_path = os.path.join(settings.CURATED_DATA_DIR, "forecast_anomalies.parquet")
     if not os.path.exists(forecast_path):
         return {"has_data": False}

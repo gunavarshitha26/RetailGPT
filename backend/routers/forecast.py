@@ -1,10 +1,9 @@
-import os
 from datetime import timedelta
 
 import pandas as pd
 from fastapi import APIRouter, Depends, Query
 
-from backend.config import settings
+from backend.dataset_access import get_user_dataset_path, load_user_dataset
 from backend.routers.auth import get_current_user_from_cookie
 
 router = APIRouter(tags=["Forecast Studio"])
@@ -15,34 +14,12 @@ ALLOWED_CATEGORIES = {"All", "Furniture", "Office Supplies", "Technology"}
 ALLOWED_REGIONS = {"All", "East", "West", "Central", "South"}
 
 
-def get_forecast_source_path():
-    curated_guard = os.path.join(settings.CURATED_DATA_DIR, "forecast_anomalies.parquet")
-    if not os.path.exists(curated_guard):
-        return None
-    staged_path = os.path.join(settings.STAGED_DATA_DIR, "train_staged.parquet")
-    raw_path = os.path.join(settings.RAW_DATA_DIR, "train_raw.parquet")
-    root_csv = "train.csv"
-    if os.path.exists(staged_path):
-        return staged_path
-    if os.path.exists(raw_path):
-        return raw_path
-    if os.path.exists(root_csv):
-        return root_csv
-    return None
+def get_forecast_source_path(username: str):
+    return get_user_dataset_path(username)
 
 
-def load_forecast_source():
-    path = get_forecast_source_path()
-    if not path:
-        return None
-    if path.endswith(".parquet"):
-        df = pd.read_parquet(path)
-    else:
-        df = pd.read_csv(path)
-    if "Order Date" not in df.columns:
-        return None
-    df["Order Date"] = pd.to_datetime(df["Order Date"], dayfirst=True, errors="coerce")
-    return df.dropna(subset=["Order Date"])
+def load_forecast_source(username: str):
+    return load_user_dataset(username, parse_order_date=True)
 
 
 def make_linear_forecast(daily_df, metric, horizon):
@@ -104,7 +81,7 @@ async def get_forecast(
     region: str = Query("All"),
     user=Depends(get_current_user_from_cookie),
 ):
-    df = load_forecast_source()
+    df = load_forecast_source(user["username"])
     if df is None or df.empty:
         return {"has_data": False, "historical": [], "forecast": []}
 

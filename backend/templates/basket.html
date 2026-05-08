@@ -1,15 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% if not has_data %}
-<div class="anomaly-empty-page">
-    <div class="empty-state-container anomaly-empty-only">
-        <div class="empty-state-icon">&#128722;</div>
-        <h2 class="empty-state-title">No dataset uploaded. Please upload your data in Data Hub to use Basket Intelligence.</h2>
-        <a href="/data-hub" class="btn-primary empty-state-btn">Go to Data Hub &rarr;</a>
-    </div>
-</div>
-{% else %}
 <div class="dashboard-layout">
     <aside class="sidebar">
         <div class="sidebar-header">
@@ -39,6 +30,13 @@
         </header>
 
         <div class="dashboard-content">
+            {% if not has_data %}
+            <div class="empty-state-container">
+                <div class="empty-state-icon">&#128722;</div>
+                <h2 class="empty-state-title">No dataset uploaded. Please upload your data in Data Hub to use Basket Intelligence.</h2>
+                <a href="/data-hub" class="btn-primary empty-state-btn">Go to Data Hub &rarr;</a>
+            </div>
+            {% else %}
             <div class="analytics-workspace">
                 <section class="analytics-controls">
                     <p class="settings-eyebrow">Filters</p>
@@ -118,10 +116,10 @@
                     </div>
                 </section>
             </div>
+            {% endif %}
         </div>
     </main>
 </div>
-{% endif %}
 {% endblock %}
 
 {% block scripts %}

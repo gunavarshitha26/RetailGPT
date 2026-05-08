@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from backend.config import settings
+from backend.dataset_access import has_user_dataset
 from backend.database import init_db
 from backend.routers import anomalies, auth, basket, chat, data, forecast
 from backend.routers.auth import get_current_user_from_cookie
@@ -95,9 +95,7 @@ async def signup_page(request: Request):
 async def dashboard(request: Request):
     try:
         user = get_current_user_from_cookie(request)
-        has_data = os.path.exists(
-            os.path.join(settings.CURATED_DATA_DIR, "forecast_anomalies.parquet")
-        )
+        has_data = has_user_dataset(user["username"])
         return templates.TemplateResponse(
             request=request,
             name="dashboard.html",
@@ -124,7 +122,7 @@ async def data_hub(request: Request):
 async def forecast_studio(request: Request):
     try:
         user = get_current_user_from_cookie(request)
-        has_data = bool(forecast.get_forecast_source_path())
+        has_data = bool(forecast.get_forecast_source_path(user["username"]))
         return templates.TemplateResponse(
             request=request,
             name="forecast.html",

@@ -490,21 +490,6 @@ button, input, table { font: inherit; }
   gap: 1.5rem;
 }
 
-.anomaly-empty-page {
-  display: grid;
-  min-height: 100vh;
-  place-items: center;
-  padding: 1.5rem;
-  background:
-    radial-gradient(circle at 50% 20%, rgba(59,130,246,0.12), transparent 28rem),
-    var(--bg-base);
-}
-
-.anomaly-empty-only {
-  height: auto;
-  min-height: min(70vh, 620px);
-}
-
 .empty-state-icon {
   font-size: 5rem;
   filter: drop-shadow(0 0 20px rgba(59,130,246,0.4));

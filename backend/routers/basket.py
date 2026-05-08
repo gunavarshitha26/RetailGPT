@@ -1,35 +1,22 @@
 import math
-import os
 from typing import Optional
 
 import pandas as pd
 from fastapi import APIRouter, Depends, Query
 
-from backend.config import settings
-from backend.database import get_user_files
+from backend.dataset_access import get_user_dataset_path as find_user_dataset_path
+from backend.dataset_access import load_user_dataset as read_user_dataset
 from backend.routers.auth import get_current_user_from_cookie
 
 router = APIRouter(tags=["Basket Intelligence"])
 
 
 def get_user_dataset_path(username: str) -> Optional[str]:
-    for file_record in get_user_files(username):
-        if file_record.get("file_type") != "csv" or file_record.get("status") != "Ready":
-            continue
-        path = os.path.join(settings.DATA_STORE_DIR, "uploads", username, file_record["filename"])
-        if os.path.exists(path):
-            return path
-    return None
+    return find_user_dataset_path(username)
 
 
 def load_user_dataset(username: str) -> Optional[pd.DataFrame]:
-    path = get_user_dataset_path(username)
-    if not path:
-        return None
-    try:
-        return pd.read_csv(path)
-    except Exception:
-        return None
+    return read_user_dataset(username)
 
 
 def option_values(df: pd.DataFrame, column: str) -> list[str]:
