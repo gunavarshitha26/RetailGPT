@@ -4,6 +4,7 @@ RetailGPT is an advanced, AI-powered multi-agent retail analytics platform. It f
 
 > [!NOTE]
 > For a deep technical dive, refer to the [Project Overview PDF](file:///c:/Users/gunav/Downloads/Primary%20Domain/RetailGPT/RetailGPT_Project_Overview.pdf) generated in the root directory.
+> For Azure AI and cloud deployment steps, see [AZURE_DEPLOYMENT_GUIDE.md](AZURE_DEPLOYMENT_GUIDE.md).
 
 ## 🚀 Prerequisites
 
