@@ -1,6 +1,7 @@
 """RetailGPT AI Copilot chat router with PDF-backed RAG."""
 import logging
 import os
+import re
 from dataclasses import dataclass
 
 import pandas as pd
@@ -201,6 +202,47 @@ def _total_sales_answer(df: pd.DataFrame) -> str | None:
     )
 
 
+def _average_order_value_answer(df: pd.DataFrame) -> str | None:
+    if "Sales" not in df.columns:
+        return None
+    clean = df.dropna(subset=["Sales"]).copy()
+    if clean.empty:
+        return None
+    if "Order ID" in clean.columns:
+        order_sales = clean.groupby("Order ID")["Sales"].sum()
+        if order_sales.empty:
+            return None
+        return (
+            f"Average order value: {_money(order_sales.mean())}\n"
+            f"Orders analyzed: {len(order_sales):,}\n"
+            f"Average line-item transaction value: {_money(clean['Sales'].mean())}"
+        )
+    return (
+        f"Average transaction value: {_money(clean['Sales'].mean())}\n"
+        f"Transactions analyzed: {len(clean):,}"
+    )
+
+
+def _maximum_transaction_answer(df: pd.DataFrame) -> str | None:
+    if "Sales" not in df.columns:
+        return None
+    clean = df.dropna(subset=["Sales"]).copy()
+    if clean.empty:
+        return None
+    row = clean.loc[clean["Sales"].idxmax()]
+    details = []
+    for column in ["Order ID", "Customer Name", "Category", "Sub-Category", "Product Name", "Order Date"]:
+        if column in row.index and pd.notna(row[column]):
+            value = row[column]
+            if column == "Order Date" and hasattr(value, "strftime"):
+                value = value.strftime("%Y-%m-%d")
+            details.append(f"{column}: {value}")
+    return (
+        f"Maximum transaction value: {_money(row['Sales'])}\n"
+        + ("\n".join(details) if details else f"Transactions analyzed: {len(clean):,}")
+    )
+
+
 def _best_region_answer(df: pd.DataFrame) -> str | None:
     if "Region" not in df.columns or "Sales" not in df.columns:
         return None
@@ -226,8 +268,144 @@ def _category_answer(df: pd.DataFrame) -> str | None:
     category_sales = df.dropna(subset=["Category", "Sales"]).groupby("Category")["Sales"].sum().sort_values(ascending=False)
     if category_sales.empty:
         return None
-    lines = [f"{category}: {_money(value)}" for category, value in category_sales.head(5).items()]
-    return "Top categories in your uploaded dataset:\n\n" + "\n".join(lines)
+    total = category_sales.sum()
+    lines = [
+        f"{category}: {_money(value)} ({(value / total * 100) if total else 0:.1f}%)"
+        for category, value in category_sales.head(5).items()
+    ]
+    return "Sales breakdown by category:\n\n" + "\n".join(lines)
+
+
+def _top_products_answer(df: pd.DataFrame, limit: int = 5) -> str | None:
+    product_col = "Product Name" if "Product Name" in df.columns else "Sub-Category" if "Sub-Category" in df.columns else None
+    if not product_col or "Sales" not in df.columns:
+        return None
+
+    clean = df.dropna(subset=[product_col, "Sales"]).copy()
+    if clean.empty:
+        return None
+
+    product_sales = clean.groupby(product_col)["Sales"].sum().sort_values(ascending=False)
+    if product_sales.empty:
+        return None
+
+    order_counts = clean.groupby(product_col)["Order ID"].nunique() if "Order ID" in clean.columns else None
+    line_counts = clean.groupby(product_col).size()
+
+    lines = []
+    for product, sales in product_sales.head(limit).items():
+        details = [f"revenue {_money(sales)}"]
+        if order_counts is not None:
+            details.append(f"{int(order_counts.get(product, 0)):,} orders")
+        details.append(f"{int(line_counts.get(product, 0)):,} line items")
+        lines.append(f"{product}: " + ", ".join(details))
+
+    note = ""
+    if "Quantity" not in df.columns:
+        note = "\n\nNote: your dataset does not include a Quantity column, so I ranked products by sales revenue."
+
+    return f"Top {min(limit, len(product_sales))} products sold by sales revenue:\n\n" + "\n".join(lines) + note
+
+
+def _top_category_revenue_answer(df: pd.DataFrame) -> str | None:
+    if "Category" not in df.columns or "Sales" not in df.columns:
+        return None
+    category_sales = df.dropna(subset=["Category", "Sales"]).groupby("Category")["Sales"].sum().sort_values(ascending=False)
+    if category_sales.empty:
+        return None
+    top_category = category_sales.index[0]
+    top_sales = category_sales.iloc[0]
+    total = category_sales.sum()
+    share = (top_sales / total * 100) if total else 0
+    return (
+        f"{top_category} generates the most revenue: {_money(top_sales)} ({share:.1f}% of category revenue).\n\n"
+        "Category ranking:\n" + "\n".join(f"{category}: {_money(value)}" for category, value in category_sales.items())
+    )
+
+
+def _category_transaction_count_answer(df: pd.DataFrame, category_name: str) -> str | None:
+    if "Category" not in df.columns:
+        return None
+    matches = df[df["Category"].astype(str).str.lower() == category_name.lower()]
+    if matches.empty:
+        return f"I could not find transactions for the category '{category_name}' in the uploaded dataset."
+    unique_orders = matches["Order ID"].nunique() if "Order ID" in matches.columns else None
+    response = f"{category_name} has {len(matches):,} transactions/line items."
+    if unique_orders is not None:
+        response += f"\nUnique orders containing {category_name}: {unique_orders:,}"
+    return response
+
+
+def _highest_average_category_answer(df: pd.DataFrame) -> str | None:
+    if "Category" not in df.columns or "Sales" not in df.columns:
+        return None
+    category_avg = df.dropna(subset=["Category", "Sales"]).groupby("Category")["Sales"].mean().sort_values(ascending=False)
+    if category_avg.empty:
+        return None
+    top_category = category_avg.index[0]
+    return (
+        f"{top_category} has the highest average sale amount: {_money(category_avg.iloc[0])}.\n\n"
+        "Average sale by category:\n" + "\n".join(f"{category}: {_money(value)}" for category, value in category_avg.items())
+    )
+
+
+def _customer_key_column(df: pd.DataFrame) -> str | None:
+    if "Customer Name" in df.columns:
+        return "Customer Name"
+    if "Customer ID" in df.columns:
+        return "Customer ID"
+    return None
+
+
+def _top_customers_answer(df: pd.DataFrame, limit: int = 3) -> str | None:
+    customer_col = _customer_key_column(df)
+    if not customer_col or "Sales" not in df.columns:
+        return None
+    customer_sales = df.dropna(subset=[customer_col, "Sales"]).groupby(customer_col)["Sales"].sum().sort_values(ascending=False)
+    if customer_sales.empty:
+        return None
+    lines = [f"{name}: {_money(value)}" for name, value in customer_sales.head(limit).items()]
+    return f"Top {limit} customers by revenue:\n\n" + "\n".join(lines)
+
+
+def _customer_spend_answer(df: pd.DataFrame, customer_name: str) -> str | None:
+    if "Customer Name" not in df.columns or "Sales" not in df.columns:
+        return None
+    matches = df[df["Customer Name"].astype(str).str.lower() == customer_name.lower()]
+    if matches.empty:
+        return f"I could not find {customer_name} in the uploaded dataset."
+    orders = matches["Order ID"].nunique() if "Order ID" in matches.columns else "not available"
+    return (
+        f"{customer_name} spent {_money(matches['Sales'].sum())}.\n"
+        f"Transactions/line items: {len(matches):,}\n"
+        f"Unique orders: {orders}"
+    )
+
+
+def _unique_customers_answer(df: pd.DataFrame) -> str | None:
+    customer_col = _customer_key_column(df)
+    if not customer_col:
+        return None
+    return f"Unique customers in total: {df[customer_col].dropna().nunique():,}"
+
+
+def _most_frequent_buyer_answer(df: pd.DataFrame) -> str | None:
+    customer_col = _customer_key_column(df)
+    if not customer_col:
+        return None
+    clean = df.dropna(subset=[customer_col]).copy()
+    if clean.empty:
+        return None
+    if "Order ID" in clean.columns:
+        frequency = clean.groupby(customer_col)["Order ID"].nunique().sort_values(ascending=False)
+        unit = "orders"
+    else:
+        frequency = clean[customer_col].value_counts()
+        unit = "transactions/line items"
+    if frequency.empty:
+        return None
+    return f"Most frequent buyer: {frequency.index[0]} with {int(frequency.iloc[0]):,} {unit}."
+
 
 
 def _anomaly_answer(df: pd.DataFrame) -> str | None:
@@ -409,18 +587,127 @@ def _cooccurrence_cross_sells(df: pd.DataFrame) -> str | None:
 
 
 def _forecast_answer(df: pd.DataFrame) -> str:
+    if "Order Date" not in df.columns or "Sales" not in df.columns:
+        return (
+            "Forecasting needs Order Date and Sales columns. Upload a dataset with those fields, then use Forecast Studio "
+            "for 7, 30, or 90 day predictions."
+        )
+    clean = df.dropna(subset=["Order Date", "Sales"]).copy()
+    if clean.empty:
+        return "I could not build a forecast because the uploaded dataset has no valid Order Date and Sales rows."
+    try:
+        from backend.routers.forecast import make_linear_forecast, make_prophet_forecast
+
+        daily = (
+            clean.groupby(clean["Order Date"].dt.date)["Sales"]
+            .sum()
+            .reset_index(name="Sales")
+            .rename(columns={"Order Date": "date"})
+        )
+        daily["date"] = pd.to_datetime(daily["date"])
+        daily = daily.sort_values("date")
+        forecast = make_prophet_forecast(daily, "Sales", 90) or make_linear_forecast(daily, "Sales", 90)
+    except Exception as exc:
+        logger.error("Chat forecast calculation failed: %s", exc)
+        return (
+            "Forecasting is available for your uploaded dataset. RetailGPT groups sales by order date and predicts future demand trends.\n\n"
+            "Recommendation: open Forecast Studio to choose a horizon such as 7, 30, or 90 days."
+        )
+
+    if not forecast:
+        return None
+    forecast_total = sum(float(row.get("value", 0)) for row in forecast)
+    forecast_avg = forecast_total / len(forecast)
+    peak_day = max(forecast, key=lambda row: float(row.get("value", 0)))
     return (
-        "Forecasting is available for your uploaded dataset. RetailGPT groups sales by order date and predicts future demand trends.\n\n"
-        "Recommendation: open Forecast Studio to choose a horizon such as 7, 30, or 90 days."
+        f"Next quarter sales forecast (90 days): {_money(forecast_total)} total predicted sales.\n"
+        f"Average forecasted daily sales: {_money(forecast_avg)}\n"
+        f"Highest forecasted day: {peak_day['date']} at {_money(peak_day['value'])}\n\n"
+        "Open Forecast Studio for the full daily forecast curve and confidence range."
+    )
+
+
+def _unusual_purchasing_patterns_answer(df: pd.DataFrame) -> str | None:
+    parts = []
+    anomaly = _anomaly_answer(df)
+    if anomaly:
+        parts.append(anomaly)
+    cross_sell = _cross_sell_answer(df)
+    if cross_sell:
+        parts.append(cross_sell)
+    if parts:
+        return "\n\n".join(parts)
+    return (
+        "I did not find enough date, sales, or order-item detail to identify unusual purchasing patterns. "
+        "For this, upload data with Order Date, Sales, Order ID, and Product Name or Sub-Category columns."
+    )
+
+
+def _is_anomaly_question(q: str) -> bool:
+    return any(term in q for term in ["anomaly", "anomalies", "anomol", "outlier", "spike", "drop"])
+
+
+def _is_reduction_question(q: str) -> bool:
+    return any(
+        term in q
+        for term in [
+            "reduce",
+            "reduction",
+            "fix",
+            "handle",
+            "control",
+            "avoid",
+            "prevent",
+            "minimize",
+            "decrease",
+            "lower",
+            "improve",
+            "what to do",
+            "how to",
+            "solution",
+            "recommend",
+        ]
+    )
+
+
+def _generic_anomaly_reduction_answer() -> str:
+    return (
+        "To reduce retail anomalies, first separate expected events from real problems. Promotions, holidays, bulk orders, and seasonal peaks "
+        "can create normal spikes; stockouts, delayed replenishment, pricing errors, and fulfillment issues often create harmful drops.\n\n"
+        "Practical steps:\n"
+        "1. Review anomaly dates against promotions, holidays, and local events.\n"
+        "2. Keep buffer stock for fast-moving categories before forecasted peaks.\n"
+        "3. Investigate sudden sales drops by region, category, and ship mode.\n"
+        "4. Set alerts for large sales deviations so teams respond quickly.\n"
+        "5. Use targeted discounts or bundles to clear items with repeated demand drops.\n\n"
+        "Upload a dataset in Data Hub to let RetailGPT identify the exact dates and regions to prioritize."
     )
 
 
 def _direct_dataset_answer(query: str, df: pd.DataFrame) -> str | None:
     q = query.lower()
-    wants_anomaly = "anomaly" in q or "anomol" in q
-    wants_anomaly_reduction = wants_anomaly and any(
-        term in q for term in ["reduce", "fix", "handle", "control", "avoid", "prevent", "improve", "what to do", "how to"]
+    wants_anomaly = _is_anomaly_question(q)
+    wants_anomaly_reduction = wants_anomaly and _is_reduction_question(q)
+    customer_spend_match = re.search(r"how much did\s+(.+?)\s+spend\??$", query, flags=re.IGNORECASE)
+    office_supplies_count = "office supplies" in q and any(term in q for term in ["how many", "transactions", "transaction"])
+    wants_aov = "average order value" in q or "aov" in q
+    wants_max_transaction = any(
+        term in q for term in ["maximum transaction", "max transaction", "largest transaction", "highest transaction"]
     )
+    wants_top_customers = "top" in q and "customer" in q and any(term in q for term in ["revenue", "sales", "spend"])
+    wants_top_products = any(term in q for term in ["top product", "top products", "best selling", "best-selling", "most sold"]) or (
+        "product" in q and any(term in q for term in ["sold", "sales", "revenue", "highest", "top"])
+    )
+    wants_unique_customers = "unique customers" in q or "how many customers" in q
+    wants_frequent_buyer = "frequent buyer" in q or "most frequent" in q
+    wants_category_breakdown = "sales breakdown by category" in q or ("breakdown" in q and "category" in q)
+    wants_top_category = "category" in q and any(
+        term in q for term in ["most revenue", "generates the most", "highest revenue", "top revenue"]
+    )
+    wants_highest_average_category = "category" in q and "average" in q and any(
+        term in q for term in ["highest", "most", "largest"]
+    )
+    wants_unusual_purchase = "unusual purchasing pattern" in q or "unusual purchase pattern" in q
     wants_sales_improvement = any(
         term in q
         for term in [
@@ -451,6 +738,55 @@ def _direct_dataset_answer(query: str, df: pd.DataFrame) -> str | None:
         answers.append(("Sales Improvement", _sales_improvement_answer(df)))
     if wants_anomaly_reduction:
         answers.append(("Reduce Anomalies", _anomaly_reduction_answer(df)))
+    if customer_spend_match:
+        customer_name = customer_spend_match.group(1).strip()
+        answer = _customer_spend_answer(df, customer_name)
+        if answer:
+            answers.append(("Customer Spend", answer))
+    if wants_top_customers:
+        answer = _top_customers_answer(df)
+        if answer:
+            answers.append(("Top Customers", answer))
+    if wants_top_products:
+        answer = _top_products_answer(df)
+        if answer:
+            answers.append(("Top Products", answer))
+    if wants_unique_customers:
+        answer = _unique_customers_answer(df)
+        if answer:
+            answers.append(("Unique Customers", answer))
+    if wants_frequent_buyer:
+        answer = _most_frequent_buyer_answer(df)
+        if answer:
+            answers.append(("Most Frequent Buyer", answer))
+    if wants_aov:
+        answer = _average_order_value_answer(df)
+        if answer:
+            answers.append(("Average Order Value", answer))
+    if wants_max_transaction:
+        answer = _maximum_transaction_answer(df)
+        if answer:
+            answers.append(("Maximum Transaction", answer))
+    if office_supplies_count:
+        answer = _category_transaction_count_answer(df, "Office Supplies")
+        if answer:
+            answers.append(("Office Supplies Transactions", answer))
+    if wants_top_category:
+        answer = _top_category_revenue_answer(df)
+        if answer:
+            answers.append(("Top Revenue Category", answer))
+    if wants_highest_average_category:
+        answer = _highest_average_category_answer(df)
+        if answer:
+            answers.append(("Highest Average Category", answer))
+    if wants_category_breakdown:
+        answer = _category_answer(df)
+        if answer:
+            answers.append(("Category Breakdown", answer))
+    if wants_unusual_purchase:
+        answer = _unusual_purchasing_patterns_answer(df)
+        if answer:
+            answers.append(("Unusual Purchasing Patterns", answer))
     if wants_total_sales:
         answer = _total_sales_answer(df)
         if answer:
@@ -467,11 +803,11 @@ def _direct_dataset_answer(query: str, df: pd.DataFrame) -> str | None:
         answer = _peak_sales_answer(df)
         if answer:
             answers.append(("Peak Season", answer))
-    if wants_anomaly and not wants_anomaly_reduction:
+    if wants_anomaly and not wants_anomaly_reduction and not wants_unusual_purchase:
         answer = _anomaly_answer(df)
         if answer:
             answers.append(("Anomalies", answer))
-    if wants_category:
+    if wants_category and not (wants_top_category or wants_highest_average_category or wants_category_breakdown or office_supplies_count):
         answer = _category_answer(df)
         if answer:
             answers.append(("Categories", answer))
@@ -497,7 +833,9 @@ def _dataset_fallback_response(query: str, df: pd.DataFrame) -> str:
 
 def _generic_retail_response(query: str) -> str:
     q = query.lower()
-    if "anomaly" in q or "anomol" in q:
+    if _is_anomaly_question(q) and _is_reduction_question(q):
+        return _generic_anomaly_reduction_answer()
+    if _is_anomaly_question(q):
         return (
             "In retail, anomalies are unusual events in business metrics, such as a sudden sales spike, a sharp sales drop, "
             "unexpected stockout behavior, or abnormal regional demand.\n\n"
