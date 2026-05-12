@@ -1,8 +1,6 @@
 import os
 import json
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from backend.dataset_access import has_user_dataset

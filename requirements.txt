@@ -18,15 +18,10 @@ lightgbm
 pyarrow
 mlxtend
 
-# --- Visualization ---
-plotly
-
 # --- LangChain Multi-Agent ---
 langchain
 langchain-groq
 langchain-community
-langchain-core
-langchain-experimental
 
 # --- RAG / Vector Store ---
 chromadb

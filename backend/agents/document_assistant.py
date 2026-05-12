@@ -2,7 +2,6 @@ import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
-# We use a fast, local embedding model from HuggingFace to avoid needing an extra API key
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from backend.config import settings
 
