@@ -12,7 +12,7 @@ from backend.routers.auth import get_current_user_from_cookie
 router = APIRouter(tags=["Anomaly Center"])
 
 ALLOWED_METRICS = {"Sales"}
-ALLOWED_SEVERITIES = {"all", "high", "medium", "low"}
+ALLOWED_SEVERITIES = {"all", "high", "medium"}
 
 
 def get_user_dataset_path(username: str) -> Optional[str]:
@@ -43,6 +43,25 @@ def severity_from_deviation(deviation_pct: float) -> str:
     if deviation >= 40:
         return "medium"
     return "low"
+
+
+def assign_relative_severity(records: list[dict]) -> list[dict]:
+    if len(records) < 3:
+        for record in records:
+            record["severity"] = severity_from_deviation(record["deviation_pct"])
+        return records
+
+    ranked = sorted(records, key=lambda record: abs(record["deviation_pct"]))
+    total = len(ranked)
+    for index, record in enumerate(ranked):
+        percentile = (index + 1) / total
+        if percentile <= 1 / 3:
+            record["severity"] = "low"
+        elif percentile <= 2 / 3:
+            record["severity"] = "medium"
+        else:
+            record["severity"] = "high"
+    return records
 
 
 def finite_float(value, fallback: float = 0.0) -> float:
@@ -127,6 +146,7 @@ def detect_daily_metric_anomalies(df: pd.DataFrame, metric: str) -> tuple[list[d
                 "severity": severity_from_deviation(deviation_pct),
             }
         )
+    assign_relative_severity(records)
     return records, daily
 
 
